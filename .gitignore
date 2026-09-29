@@ -1,0 +1,12 @@
+.gradle/
+.kotlin/
+**/build/
+local.properties
+signing.properties
+*.jks
+*.keystore
+.idea/
+*.iml
+*.apk
+*.aab
+*-signing-backup.zip

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.xenoah.clipdock.DownloadSpecTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-09-29T03:38:24" hostname="f8294458e735" time="0.068">
+  <properties/>
+  <testcase name="refusesWrongAssetChecksum" classname="io.xenoah.clipdock.DownloadSpecTest" time="0.022"/>
+  <testcase name="extractsUrlFromAndroidShareText" classname="io.xenoah.clipdock.DownloadSpecTest" time="0.016"/>
+  <testcase name="bestQualityDoesNotCapHeight" classname="io.xenoah.clipdock.DownloadSpecTest" time="0.017"/>
+  <testcase name="refusesMalformedChecksum" classname="io.xenoah.clipdock.DownloadSpecTest" time="0.001"/>
+  <testcase name="acceptsUnicodeTitlesAroundUrl" classname="io.xenoah.clipdock.DownloadSpecTest" time="0.0"/>
+  <testcase name="readsOnlyExactBinaryChecksum" classname="io.xenoah.clipdock.DownloadSpecTest" time="0.005"/>
+  <testcase name="mp3UsesExplicitConversionAndBitrate" classname="io.xenoah.clipdock.DownloadSpecTest" time="0.001"/>
+  <testcase name="enforcesResolutionOnBothVideoAndFallback" classname="io.xenoah.clipdock.DownloadSpecTest" time="0.002"/>
+  <testcase name="rejectsLocalFilesAndOptionInjection" classname="io.xenoah.clipdock.DownloadSpecTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

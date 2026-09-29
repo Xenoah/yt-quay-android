@@ -1,0 +1,24 @@
+[
+  {
+    "mode": "video",
+    "exit": 0,
+    "completed_files": [
+      "test-workspace/download-check-video/clipdock-test [clipdock-test].mp4"
+    ],
+    "bytes": [
+      123707
+    ],
+    "stderr": ""
+  },
+  {
+    "mode": "mp3",
+    "exit": 0,
+    "completed_files": [
+      "test-workspace/download-check-mp3/clipdock-test [clipdock-test].mp3"
+    ],
+    "bytes": [
+      50302
+    ],
+    "stderr": ""
+  }
+]

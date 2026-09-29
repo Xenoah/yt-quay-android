@@ -1,0 +1,17 @@
+Verifies
+Verified using v1 scheme (JAR signing): false
+Verified using v2 scheme (APK Signature Scheme v2): true
+Verified using v3 scheme (APK Signature Scheme v3): false
+Verified using v3.1 scheme (APK Signature Scheme v3.1): false
+Verified using v4 scheme (APK Signature Scheme v4): false
+Verified for SourceStamp: false
+Number of signers: 1
+Signer #1 certificate DN: CN=ClipDock Personal Build
+Signer #1 certificate SHA-256 digest: d703e419c811306679828adb3c8dee2daaf4ceb3a81d4bdec51a8586d0e7cfd1
+Signer #1 certificate SHA-1 digest: aad215753ec7fd6896c6744d402a6398149411fe
+Signer #1 certificate MD5 digest: 0d74495670ab88724d319174854c28b7
+Signer #1 key algorithm: RSA
+Signer #1 key size (bits): 3072
+Signer #1 public key SHA-256 digest: d91342cced1cabb48b340393dce9e5cd0444f3cc33d7eae10ce4d97ff81b35e5
+Signer #1 public key SHA-1 digest: 85014a9ea2337cc90576ee8e3c8e42e7609c282c
+Signer #1 public key MD5 digest: 44e6eaeeea1862108138f37c8b4611ab
