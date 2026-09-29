@@ -2,7 +2,9 @@
 
 Kotlin製のAndroid向けyt-dlpフロントエンド。動画・音声を端末の `Download/YTQuay` に保存します。
 
-初回プレリリース `v1.0.0-pre.1` を準備中です。[リリース一覧](https://github.com/Xenoah/yt-quay-android/releases)
+初回プレリリース: `v1.0.0-pre.1`。[APK・リリース一覧](https://github.com/Xenoah/yt-quay-android/releases) · [検証記録](docs/VERIFICATION.md)
+
+ビルド・ユニットテスト9件・Lint・APK署名を検証済みです。**Android実機での起動・保存・更新・復元は未確認**のため、動作確認用のプレリリースです。
 
 以前のClipDock版と同じアプリID・署名を維持し、上書き更新できる構成です。設定と履歴を引き継ぎ、新しいファイルを `Download/YTQuay` に保存します。以前のファイルは `Download/ClipDock` に残ります。
 
@@ -13,7 +15,7 @@ Kotlin製のAndroid向けyt-dlpフロントエンド。動画・音声を端末�
 3. 「履歴」から保存したファイルを開く／共有できます。保存したファイルは通常のファイル管理アプリでも確認できます。
 4. サイト側の変更で取得できなくなった場合は「更新設定」→「今すぐ更新する」。必要に応じてNightlyに切り替えます。
 
-対応: Android 10 / API 29以降。配布APKはARM64用。一般的な現行Androidスマートフォン向けです。
+対応: Android 10 / API 29以降。通常のスマートフォンにはARM64版を選んでください。ARMv7版とx86_64版も用意しています。
 
 ## 主な機能
 
