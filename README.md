@@ -2,7 +2,7 @@
 
 Kotlin製のAndroid向けyt-dlpフロントエンド。動画・音声を端末の `Download/YTQuay` に保存します。
 
-初回プレリリース: `v1.0.0-pre.1`。[APK・リリース一覧](https://github.com/Xenoah/yt-quay-android/releases) · [検証記録](docs/VERIFICATION.md)
+初回プレリリース `v1.0.0-pre.1` のAPKは検証済みです。GitHub Releasesへの公開待ちです。[APK・リリース一覧](https://github.com/Xenoah/yt-quay-android/releases) · [検証記録](docs/VERIFICATION.md)
 
 ビルド・ユニットテスト9件・Lint・APK署名を検証済みです。**Android実機での起動・保存・更新・復元は未確認**のため、動作確認用のプレリリースです。
 
