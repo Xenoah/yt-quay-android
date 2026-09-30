@@ -10,13 +10,7 @@ import java.io.File
 
 object MediaFiles {
     fun jobsDir(ctx: Context) = File(ctx.noBackupFilesDir, "downloads").apply { mkdirs() }
-    fun completedFiles(dir: File): List<File> {
-        val manifest = File(dir, "completed.txt")
-        if (!manifest.isFile) return emptyList()
-        return manifest.readLines().distinct().map { File(it).canonicalFile }.filter {
-            it.parentFile == dir.canonicalFile && it.isFile && it.length() > 0 && !File(dir, it.name + ".published").exists()
-        }
-    }
+    fun completedFiles(dir: File): List<File> = RecoveryFiles.completedFiles(dir)
 
     fun cleanPending(ctx: Context) {
         val value = AppState.prefs.getString("pendingMediaUri", null) ?: return
@@ -52,13 +46,8 @@ object MediaFiles {
         }
     }
 
-    fun recover(ctx: Context): Int {
+    fun recover(ctx: Context): RecoveryFiles.Result {
         cleanPending(ctx)
-        var count = 0
-        jobsDir(ctx).listFiles()?.filter { it.isDirectory }?.forEach { dir ->
-            completedFiles(dir).forEach { publish(ctx, it); count++ }
-            if (completedFiles(dir).isEmpty()) dir.deleteRecursively()
-        }
-        return count
+        return RecoveryFiles.recover(jobsDir(ctx)) { publish(ctx, it) }
     }
 }

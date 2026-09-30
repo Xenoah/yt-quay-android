@@ -2,11 +2,42 @@ package io.xenoah.clipdock
 
 import java.net.URI
 
-enum class OutputMode(val label: String) {
-    VIDEO("動画"), AUDIO("音声のみ"), MP3("MP3 · 192 kbps")
+enum class OutputMode(val label: String, val storedId: Int) {
+    VIDEO("動画", 0), ORIGINAL_AUDIO("オリジナル音声", 1), MANUAL_AUDIO("音声 · 手動設定", 2);
+
+    companion object {
+        fun fromStored(id: Int?): OutputMode = entries.firstOrNull { it.storedId == id } ?: ORIGINAL_AUDIO
+    }
 }
 
-data class DownloadSpec(val url: String, val mode: OutputMode, val height: Int) {
+enum class AudioFormat(val id: String, val label: String, val bitrates: List<Int>, val defaultBitrate: Int) {
+    MP3("mp3", "MP3", listOf(64, 96, 128, 160, 192, 256, 320), 192),
+    M4A("m4a", "M4A · AAC", listOf(64, 96, 128, 160, 192, 256), 192),
+    OPUS("opus", "Opus", listOf(48, 64, 96, 128, 160, 192, 256), 128);
+
+    companion object {
+        fun fromId(id: String?): AudioFormat? = entries.firstOrNull { it.id == id }
+    }
+}
+
+/** Stable mode IDs preserve old video/audio/MP3 preferences; old MP3 becomes manual 192 kbps. */
+data class AudioSelection(val mode: OutputMode, val format: AudioFormat, val bitrate: Int) {
+    companion object {
+        fun restore(modeId: Int?, formatId: String?, bitrate: Int?): AudioSelection {
+            val format = AudioFormat.fromId(formatId) ?: AudioFormat.MP3
+            return AudioSelection(OutputMode.fromStored(modeId), format,
+                bitrate?.takeIf { it in format.bitrates } ?: format.defaultBitrate)
+        }
+    }
+}
+
+data class DownloadSpec(
+    val url: String,
+    val mode: OutputMode,
+    val height: Int,
+    val audioFormat: AudioFormat = AudioFormat.MP3,
+    val audioBitrate: Int = audioFormat.defaultBitrate,
+) {
     fun options(): List<Pair<String, String?>> = buildList {
         add("--no-playlist" to null)
         add("--no-mtime" to null)
@@ -25,16 +56,16 @@ data class DownloadSpec(val url: String, val mode: OutputMode, val height: Int) 
                 add("--merge-output-format" to "mp4/mkv")
                 add("-S" to "vcodec:h264,acodec:aac")
             }
-            OutputMode.AUDIO -> {
+            OutputMode.ORIGINAL_AUDIO -> {
                 add("-f" to "ba/b")
-                add("-x" to null)
-                add("--audio-format" to "best")
+                add("--use-postprocessor" to "QuayAudio:when=post_process;format=original")
             }
-            OutputMode.MP3 -> {
+            OutputMode.MANUAL_AUDIO -> {
+                require(audioBitrate in audioFormat.bitrates) { "この音声形式では選択できないビットレートです" }
                 add("-f" to "ba/b")
-                add("-x" to null)
-                add("--audio-format" to "mp3")
-                add("--audio-quality" to "192K")
+                // ExtractAudio can stream-copy matching codecs and ignore --audio-quality.
+                // The bundled processor explicitly re-encodes even same-format inputs.
+                add("--use-postprocessor" to "QuayAudio:when=post_process;format=${audioFormat.id};bitrate=$audioBitrate")
             }
         }
     }

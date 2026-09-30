@@ -24,10 +24,10 @@ class DownloadSpecTest {
         assertEquals("bv*+ba/b", DownloadSpec("", OutputMode.VIDEO, 0).options().toMap()["-f"])
     }
     @Test fun mp3UsesExplicitConversionAndBitrate() {
-        val options = DownloadSpec("", OutputMode.MP3, 1080).options().toMap()
-        assertEquals("mp3", options["--audio-format"])
-        assertEquals("192K", options["--audio-quality"])
-        assertTrue(options.containsKey("-x"))
+        val options = DownloadSpec("", OutputMode.MANUAL_AUDIO, 1080).options().toMap()
+        assertEquals("QuayAudio:when=post_process;format=mp3;bitrate=192", options["--use-postprocessor"])
+        assertFalse(options.containsKey("--audio-quality"))
+        assertFalse(options.containsKey("-x"))
     }
     @Test fun readsOnlyExactBinaryChecksum() {
         val expected = "a".repeat(64)

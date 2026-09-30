@@ -8,6 +8,23 @@ on:
 permissions:
   contents: read
 jobs:
+  audio-tests:
+    name: Audio / Python and FFmpeg
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y ffmpeg
+      - name: Test bundled audio postprocessor
+        run: |
+          python3 --version
+          ffmpeg -version
+          ffprobe -version
+          python3 -B -m unittest discover -s tests/python -v
   build:
     runs-on: ubuntu-latest
     steps:
@@ -31,3 +48,11 @@ jobs:
         with:
           name: YTQuay-debug-apks
           path: app/build/outputs/apk/debug/*.apk
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: YTQuay-test-reports
+          path: |
+            app/build/test-results/testDebugUnitTest/
+            app/build/reports/tests/testDebugUnitTest/
+            app/build/reports/lint-results-debug.*

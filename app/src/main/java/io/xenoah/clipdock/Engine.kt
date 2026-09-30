@@ -22,6 +22,24 @@ object Engine {
     private fun binary(ctx: Context) = File(ctx.noBackupFilesDir, "${YoutubeDL.baseName}/${YoutubeDL.ytdlpDirName}/${YoutubeDL.ytdlpBin}")
     private fun previous(ctx: Context) = File(ctx.noBackupFilesDir, "engine.previous")
 
+    /** Only our APK-bundled processor is placed in this private plugin directory. */
+    fun audioPluginDirectory(ctx: Context): File {
+        val root = File(ctx.noBackupFilesDir, "quay-audio-plugins")
+        val module = File(root, "quay/yt_dlp_plugins/postprocessor/quay_audio.py")
+        module.parentFile?.mkdirs()
+        val atomic = AtomicFile(module)
+        var stream: FileOutputStream? = null
+        try {
+            stream = atomic.startWrite()
+            ctx.resources.openRawResource(R.raw.quay_audio).use { it.copyTo(stream) }
+            atomic.finishWrite(stream)
+        } catch (e: Exception) {
+            atomic.failWrite(stream)
+            throw e
+        }
+        return root
+    }
+
     fun init(ctx: Context) {
         if (initialized) return
         val target = binary(ctx)

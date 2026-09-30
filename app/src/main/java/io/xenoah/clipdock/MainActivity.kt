@@ -31,6 +31,13 @@ class MainActivity : Activity() {
     private lateinit var url: EditText
     private lateinit var mode: Spinner
     private lateinit var quality: Spinner
+    private lateinit var videoOptions: LinearLayout
+    private lateinit var manualAudioOptions: LinearLayout
+    private lateinit var audioFormat: Spinner
+    private lateinit var audioBitrate: Spinner
+    private lateinit var audioHint: TextView
+    private var initialAudio = AudioSelection.restore(null, null, null)
+    private var displayedAudioFormat = AudioFormat.MP3
     private lateinit var download: Button
     private lateinit var statusTitle: TextView
     private lateinit var statusDetail: TextView
@@ -50,6 +57,12 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val stored = AppState.prefs.all
+        initialAudio = AudioSelection.restore(
+            if (savedInstanceState?.containsKey("mode") == true) savedInstanceState.getInt("mode") else stored["mode"] as? Int,
+            savedInstanceState?.getString("audioFormat") ?: stored["audioFormat"] as? String,
+            if (savedInstanceState?.containsKey("audioBitrate") == true) savedInstanceState.getInt("audioBitrate") else stored["audioBitrate"] as? Int,
+        )
         val root = column().apply { setBackgroundColor(bg) }
         if (Build.VERSION.SDK_INT >= 30) {
             window.setDecorFitsSystemWindows(false)
@@ -83,8 +96,7 @@ class MainActivity : Activity() {
             frame.addView(scroll, FrameLayout.LayoutParams(-1, -1))
         }
         url.setText(savedInstanceState?.getString("url") ?: AppState.prefs.getString("draftUrl", ""))
-        mode.setSelection(savedInstanceState?.getInt("mode") ?: AppState.prefs.getInt("mode", 0))
-        quality.setSelection(savedInstanceState?.getInt("quality") ?: AppState.prefs.getInt("quality", 0))
+        quality.setSelection((savedInstanceState?.getInt("quality") ?: stored["quality"] as? Int ?: 0).coerceIn(0, 2))
         selectTab(savedInstanceState?.getInt("tab") ?: 0)
         handleShare(intent)
         if (!AppState.state.busy && !AppState.prefs.contains("engineVersion")) start(DownloadService.INIT)
@@ -116,20 +128,55 @@ class MainActivity : Activity() {
         }.withMargin(8))
         form.addView(text("保存する形式", 13, muted).withMargin(16))
         mode = spinner(OutputMode.entries.map { it.label })
+        mode.contentDescription = "動画・オリジナル音声・音声の手動設定"
+        mode.setSelection(initialAudio.mode.ordinal)
         form.addView(mode)
-        form.addView(text("動画の最大画質", 13, muted).withMargin(12))
+        videoOptions = column()
+        videoOptions.addView(text("動画の最大画質", 13, muted).withMargin(12))
         quality = spinner(listOf("1080p · フルHD", "720p · 容量を節約", "最高画質 · 上限なし"))
-        form.addView(quality)
+        videoOptions.addView(quality)
+        form.addView(videoOptions)
+        manualAudioOptions = column()
+        manualAudioOptions.addView(text("音声形式", 13, muted).withMargin(12))
+        audioFormat = spinner(AudioFormat.entries.map { it.label })
+        audioFormat.contentDescription = "手動保存する音声形式"
+        audioFormat.setSelection(initialAudio.format.ordinal)
+        manualAudioOptions.addView(audioFormat)
+        manualAudioOptions.addView(text("目標ビットレート", 13, muted).withMargin(12))
+        audioBitrate = spinner(initialAudio.format.bitrates.map { "$it kbps" })
+        audioBitrate.contentDescription = "手動保存する音声の目標ビットレート"
+        displayedAudioFormat = initialAudio.format
+        audioBitrate.setSelection(initialAudio.format.bitrates.indexOf(initialAudio.bitrate))
+        manualAudioOptions.addView(audioBitrate)
+        form.addView(manualAudioOptions)
+        audioHint = text("", 12, muted)
+        form.addView(audioHint.withMargin(8))
         mode.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onNothingSelected(parent: AdapterView<*>?) = Unit
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) { quality.isEnabled = position == 0; quality.alpha = if (position == 0) 1f else 0.4f }
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) { updateAudioControls() }
         }
+        audioFormat.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onNothingSelected(parent: AdapterView<*>?) = Unit
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                val selected = AudioFormat.entries.getOrElse(position) { AudioFormat.MP3 }
+                if (selected != displayedAudioFormat) {
+                    displayedAudioFormat = selected
+                    audioBitrate.adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_item,
+                        selected.bitrates.map { "$it kbps" }).apply { setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
+                    audioBitrate.setSelection(selected.bitrates.indexOf(selected.defaultBitrate))
+                }
+            }
+        }
+        updateAudioControls()
         download = button("↓  保存を開始", primary = true) {
             val value = InputRules.urlFromText(url.text.toString())
             if (value == null) { url.error = "HTTP/HTTPSのURLを入力してください"; return@button }
             url.setText(value)
+            val selection = selectedAudio()
+            saveDraft()
             askNotificationPermission()
-            start(DownloadService.DOWNLOAD, value, mode.selectedItemPosition, listOf(1080, 720, 0)[quality.selectedItemPosition])
+            start(DownloadService.DOWNLOAD, value, selection.mode.storedId,
+                listOf(1080, 720, 0).getOrElse(quality.selectedItemPosition) { 1080 }, selection.format.id, selection.bitrate)
         }
         form.addView(download.withMargin(20))
         form.addView(text("保存先  Download / YTQuay\n共有メニューからもURLを受け取れます。", 12, muted).withMargin(12))
@@ -244,8 +291,32 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun start(action: String, url: String = "", mode: Int = 0, height: Int = 1080) {
-        runCatching { DownloadService.start(this, action, url, mode, height) }
+    private fun selectedAudio(): AudioSelection {
+        val selectedMode = OutputMode.entries.getOrElse(mode.selectedItemPosition) { OutputMode.ORIGINAL_AUDIO }
+        val selectedFormat = AudioFormat.entries.getOrElse(audioFormat.selectedItemPosition) { AudioFormat.MP3 }
+        val rate = if (selectedFormat == displayedAudioFormat)
+            selectedFormat.bitrates.getOrElse(audioBitrate.selectedItemPosition) { selectedFormat.defaultBitrate }
+        else selectedFormat.defaultBitrate
+        return AudioSelection(selectedMode, selectedFormat, rate)
+    }
+    private fun updateAudioControls() {
+        val selectedMode = OutputMode.entries.getOrElse(mode.selectedItemPosition) { OutputMode.ORIGINAL_AUDIO }
+        videoOptions.visibility = if (selectedMode == OutputMode.VIDEO) View.VISIBLE else View.GONE
+        manualAudioOptions.visibility = if (selectedMode == OutputMode.MANUAL_AUDIO) View.VISIBLE else View.GONE
+        audioHint.visibility = if (selectedMode == OutputMode.VIDEO) View.GONE else View.VISIBLE
+        audioHint.text = if (selectedMode == OutputMode.ORIGINAL_AUDIO)
+            "配信元の音声を再圧縮せず保存。動画内の音声は取り出して保存します。"
+        else "48kHzで再圧縮します。ビットレートは目標値です。元より音質は上がりません。MP3は最大2chです。"
+    }
+    private fun saveDraft() {
+        val selected = selectedAudio()
+        AppState.prefs.edit().putString("draftUrl", url.text.toString())
+            .putInt("mode", selected.mode.storedId).putInt("quality", quality.selectedItemPosition)
+            .putString("audioFormat", selected.format.id).putInt("audioBitrate", selected.bitrate).apply()
+    }
+    private fun start(action: String, url: String = "", mode: Int = 0, height: Int = 1080,
+                      audioFormat: String = AudioFormat.MP3.id, audioBitrate: Int = AudioFormat.MP3.defaultBitrate) {
+        runCatching { DownloadService.start(this, action, url, mode, height, audioFormat, audioBitrate) }
             .onFailure { toast("開始できませんでした: ${it.message}") }
     }
     private fun selectTab(index: Int) {
@@ -292,11 +363,13 @@ class MainActivity : Activity() {
     }
     override fun onStop() {
         AppState.remove(observer)
-        AppState.prefs.edit().putString("draftUrl", url.text.toString()).putInt("mode", mode.selectedItemPosition).putInt("quality", quality.selectedItemPosition).apply()
+        saveDraft()
         super.onStop()
     }
     override fun onSaveInstanceState(outState: Bundle) {
-        outState.putString("url", url.text.toString()); outState.putInt("mode", mode.selectedItemPosition); outState.putInt("quality", quality.selectedItemPosition); outState.putInt("tab", currentTab)
+        val selected = selectedAudio()
+        outState.putString("url", url.text.toString()); outState.putInt("mode", selected.mode.storedId); outState.putInt("quality", quality.selectedItemPosition); outState.putInt("tab", currentTab)
+        outState.putString("audioFormat", selected.format.id); outState.putInt("audioBitrate", selected.bitrate)
         super.onSaveInstanceState(outState)
     }
     private fun askNotificationPermission() {
