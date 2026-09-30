@@ -53,7 +53,11 @@ class DownloadService : Service() {
                         finish("更新完了", result)
                     }
                     ROLLBACK -> finish("復元完了", Engine.rollback(this))
-                    RECOVER -> finish("保存先への転送完了", "${MediaFiles.recover(this)} 個のファイルを回収しました")
+                    RECOVER -> {
+                        val result = MediaFiles.recover(this)
+                        val retained = if (result.retainedJobCount > 0) "\n未確認・未保存ファイルのある作業フォルダ ${result.retainedJobCount} 件を削除せず保持しました" else ""
+                        finish("保存先への転送完了", "${result.publishedCount} 個のファイルを回収しました$retained")
+                    }
                     else -> {
                         status("初期設定中", "初回はPython・FFmpegの展開に少し時間がかかります")
                         Engine.init(this)
@@ -110,8 +114,8 @@ class DownloadService : Service() {
         status("保存中", "Download/YTQuay へ転送しています…")
         var name = ""
         files.forEach { name = MediaFiles.publish(this, it).name }
-        dir.deleteRecursively()
-        finish("保存しました", name)
+        val cleaned = RecoveryFiles.cleanPublishedJob(dir)
+        finish("保存しました", name + if (cleaned) "" else "\n未確認・未保存ファイルは削除せず保持しました")
     }
 
     private fun checkNotCancelled() { if (cancelled.get()) throw YoutubeDL.CanceledException() }
