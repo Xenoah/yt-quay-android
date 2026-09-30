@@ -84,12 +84,20 @@ class DownloadService : Service() {
         Engine.init(this)
         checkNotCancelled()
         val url = InputRules.urlFromText(intent.getStringExtra("url").orEmpty()) ?: error("HTTP/HTTPSのURLを入力してください")
-        val mode = OutputMode.entries.getOrElse(intent.getIntExtra("mode", 0)) { OutputMode.VIDEO }
+        val mode = OutputMode.fromStored(intent.getIntExtra("mode", OutputMode.ORIGINAL_AUDIO.storedId))
         val height = intent.getIntExtra("height", 1080).let { if (it in listOf(0, 720, 1080)) it else 1080 }
+        val audioFormat = AudioFormat.fromId(intent.getStringExtra("audioFormat") ?: AudioFormat.MP3.id)
+            ?: error("音声形式を選び直してください")
+        val audioBitrate = intent.getIntExtra("audioBitrate", audioFormat.defaultBitrate)
+        val options = DownloadSpec(url, mode, height, audioFormat, audioBitrate).options()
         val dir = File(MediaFiles.jobsDir(this), UUID.randomUUID().toString()).apply { mkdirs() }
         val request = YoutubeDLRequest(url)
-        DownloadSpec(url, mode, height).options().forEach { (option, value) ->
+        options.forEach { (option, value) ->
             if (value == null) request.addOption(option) else request.addOption(option, value)
+        }
+        if (mode != OutputMode.VIDEO) {
+            request.addOption("--no-plugin-dirs")
+            request.addOption("--plugin-dirs", Engine.audioPluginDirectory(this).absolutePath)
         }
         request.addOption("--no-simulate")
         request.addOption("-o", File(dir, "%(title).100s [%(id)s].%(ext)s").absolutePath)
@@ -103,7 +111,7 @@ class DownloadService : Service() {
             val now = System.currentTimeMillis()
             if (now - lastProgress > 400 && !cancelled.get()) {
                 lastProgress = now
-                val post = line.startsWith("[Merger]") || line.startsWith("[ExtractAudio]") || line.startsWith("[VideoRemuxer]")
+                val post = line.startsWith("[Merger]") || line.startsWith("[ExtractAudio]") || line.startsWith("[VideoRemuxer]") || line.startsWith("[QuayAudio]")
                 status(if (post) "ファイルを仕上げています" else "ダウンロード中", line.takeLast(240), if (progress < 0 || post) -1 else progress.toInt().coerceIn(0, 100), !post)
             }
         }
@@ -177,10 +185,12 @@ class DownloadService : Service() {
         const val RECOVER = "io.xenoah.clipdock.RECOVER"
         const val INIT = "io.xenoah.clipdock.INIT"
         const val CANCEL = "io.xenoah.clipdock.CANCEL"
-        fun start(ctx: Context, action: String, url: String = "", mode: Int = 0, height: Int = 1080) {
+        fun start(ctx: Context, action: String, url: String = "", mode: Int = 0, height: Int = 1080,
+                  audioFormat: String = AudioFormat.MP3.id, audioBitrate: Int = AudioFormat.MP3.defaultBitrate) {
             if (AppState.state.busy) return
             val intent = Intent(ctx, DownloadService::class.java).setAction(action)
                 .putExtra("url", url).putExtra("mode", mode).putExtra("height", height)
+                .putExtra("audioFormat", audioFormat).putExtra("audioBitrate", audioBitrate)
                 .putExtra("nightly", AppState.prefs.getBoolean("nightly", false))
             ctx.startForegroundService(intent)
         }

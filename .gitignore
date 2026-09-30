@@ -10,3 +10,4 @@ signing.properties
 *.apk
 *.aab
 *-signing-backup.zip
+__pycache__/
